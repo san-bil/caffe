@@ -13,9 +13,15 @@
 #include <string>
 #include <vector>
 
+#include <boost/make_shared.hpp>
+
+#include <boost/pointer_cast.hpp>
+
+
 #include "mex.h"
 
 #include "caffe/caffe.hpp"
+#include "caffe/layers/memory_data_layer.hpp"
 
 #define MEX_ARGS int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs
 
@@ -331,6 +337,64 @@ static void net_reshape(MEX_ARGS) {
   net->Reshape();
 }
 
+static void check_contiguous_array(const mxArray* mx_mat, string name,
+    int channels, int height, int width) {
+
+  int n_dims=mxGetNumberOfDimensions(mx_mat);
+
+  const int* dims_array = mxGetDimensions(mx_mat);
+
+  if (n_dims != 4) {
+    mxERROR((name + " must be 4-d").c_str());
+  }
+  if (!mxIsSingle(mx_mat)) {
+    std::cout << "check_contiguous_array\n";
+    mxERROR((name + " must be float32 (check_contiguous_array)").c_str());
+  }
+  if (dims_array[1] != channels) {
+    mxERROR((name + " has wrong number of channels").c_str());
+  }
+  if (dims_array[2] != height) {
+    mxERROR((name + " has wrong height").c_str());
+  }
+  if (dims_array[3] != width) {
+    mxERROR((name + " has wrong width").c_str());
+  }
+}
+
+
+
+static void net_set_input_arrays(MEX_ARGS) {
+  mxCHECK(nrhs == 3 && mxIsStruct(prhs[0]) && mxIsSingle(prhs[1]) && mxIsSingle(prhs[2]),
+      "Usage: caffe_('net_set_input_arrays', hNet, new_data_in, new_data_out)");
+  // check that this network has an input MemoryDataLayer
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  //MemoryDataLayer<float>* layer = MemoryDataLayer<float>(net->layers()[0]);
+
+  shared_ptr<MemoryDataLayer<float> > md_layer =
+    boost::dynamic_pointer_cast< MemoryDataLayer<float> >(net->layers()[0]);
+  if (!md_layer) {
+    mxERROR("set_input_arrays may only be called if the first layer is a MemoryDataLayer");
+  }
+
+  check_contiguous_array(prhs[1], "data array", md_layer->channels(),
+      md_layer->height(), md_layer->width());
+  check_contiguous_array(prhs[2], "labels array", 1, 1, 1);
+
+  const int* data_dims_array = mxGetDimensions(prhs[1]);
+  const int* label_dims_array = mxGetDimensions(prhs[2]);
+
+
+  if (data_dims_array[0] != label_dims_array[0]) {
+    mxERROR("data and labels must have the same first dimension");
+  }
+  if (data_dims_array[0] % md_layer->batch_size() != 0) {
+    mxERROR("first dimensions of input arrays must be a multiple of batch size");
+  }
+  
+  md_layer->Reset((float*)mxGetData(prhs[1]),(float*)mxGetData(prhs[2]),data_dims_array[0]);
+}
+
 // Usage: caffe_('net_save', hNet, save_file)
 static void net_save(MEX_ARGS) {
   mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]) && mxIsChar(prhs[1]),
@@ -524,6 +588,7 @@ static handler_registry handlers[] = {
   { "net_get_attr",       net_get_attr    },
   { "net_forward",        net_forward     },
   { "net_backward",       net_backward    },
+  { "net_set_input_arrays",      net_set_input_arrays   },
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
   { "net_save",           net_save        },
