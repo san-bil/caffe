@@ -12,7 +12,7 @@ function [scores, maxlabel] = classification_demo(im, use_gpu)
 % http://caffe.berkeleyvision.org/tutorial/interfaces.html#matlab
 % ****************************************************************************
 %
-% input
+% inputo
 %   im       color image as uint8 HxWx3
 %   use_gpu  1 to use the GPU, 0 to use the CPU
 %
@@ -55,11 +55,11 @@ function [scores, maxlabel] = classification_demo(im, use_gpu)
 % If you have multiple images, cat them with cat(4, ...)
 
 % Add caffe/matlab to you Matlab search PATH to use matcaffe
-if exist('../+caffe', 'dir')
-  addpath('..');
-else
-  error('Please run this demo from caffe/matlab/demo');
-end
+% if exist('../+caffe', 'dir')
+%   addpath('..');
+% else
+%   error('Please run this demo from caffe/matlab/demo');
+% end
 
 % Set caffe mode
 if exist('use_gpu', 'var') && use_gpu
@@ -72,7 +72,7 @@ end
 
 % Initialize the network using BVLC CaffeNet for image classification
 % Weights (parameter) file needs to be downloaded from Model Zoo.
-model_dir = '../../models/bvlc_reference_caffenet/';
+model_dir = [pwd '/models/bvlc_reference_caffenet/'];
 net_model = [model_dir 'deploy.prototxt'];
 net_weights = [model_dir 'bvlc_reference_caffenet.caffemodel'];
 phase = 'test'; % run with phase test (so that dropout isn't applied)
@@ -117,7 +117,7 @@ function crops_data = prepare_image(im)
 % ------------------------------------------------------------------------
 % caffe/matlab/+caffe/imagenet/ilsvrc_2012_mean.mat contains mean_data that
 % is already in W x H x C with BGR channels
-d = load('../+caffe/imagenet/ilsvrc_2012_mean.mat');
+d = load([pwd '/matlab/+caffe/imagenet/ilsvrc_2012_mean.mat']);
 mean_data = d.mean_data;
 IMAGE_DIM = 256;
 CROPPED_DIM = 227;

@@ -81,6 +81,11 @@ classdef Net < handle
       CHECK(isscalar(blob_index), 'blob_index must be a scalar');
       blob = self.layer_vec(self.name2layer_index(layer_name)).params(blob_index);
     end
+    function set_input_arrays(self, data,labels)
+      data = self.check_and_preprocess_data(data);
+      labels = self.check_and_preprocess_data(labels);
+      caffe_('net_set_input_arrays', self.hNet_self, data, labels);
+    end
     function forward_prefilled(self)
       caffe_('net_forward', self.hNet_self);
     end
