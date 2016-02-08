@@ -45,6 +45,17 @@ void EuclideanLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   }
 }
 
+template <typename Dtype>
+ const Dtype* EuclideanLossLayer<Dtype>::Get_diff() {
+  return diff_.cpu_data();                   
+}
+
+template <typename Dtype>
+void EuclideanLossLayer<Dtype>::Set_diff(Dtype* data) {
+  diff_.set_cpu_data(data);                   
+}
+
+
 #ifdef CPU_ONLY
 STUB_GPU(EuclideanLossLayer);
 #endif
