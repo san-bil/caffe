@@ -337,15 +337,36 @@ static void net_reshape(MEX_ARGS) {
   net->Reshape();
 }
 
-static void check_contiguous_array(const mxArray* mx_mat, string name,
-    int channels, int height, int width) {
+static mxArray* check_contiguous_array(const mxArray* mx_mat, string name,
+    int channels, int height, int width, int fill_trailing_dimensions) {
 
   int n_dims=mxGetNumberOfDimensions(mx_mat);
-
+  mxArray* ret_ptr=NULL;
   const int* dims_array = mxGetDimensions(mx_mat);
-
-  if (n_dims != 4) {
+  mexPrintf("%d %d %d %d\n",dims_array[0],dims_array[1],dims_array[2],dims_array[3]);
+  mexPrintf("%d %d %d\n",channels,height,width);
+  if (n_dims != 4 && !fill_trailing_dimensions) {
     mxERROR((name + " must be 4-d").c_str());
+  }else if (n_dims == 3 && fill_trailing_dimensions){
+    mxArray* new_mx_mat=mxDuplicateArray(mx_mat);
+    int new_dims[4] ={dims_array[0],dims_array[1],dims_array[2],1};
+    mxSetDimensions(new_mx_mat,(const int*)new_dims, 4);
+    mexPrintf("filling mxArray from 3d to 4d");  
+    ret_ptr=new_mx_mat;
+  }else if (n_dims == 2 && fill_trailing_dimensions){
+    mxArray* new_mx_mat=mxDuplicateArray(mx_mat);
+    int new_dims[4] ={dims_array[0],dims_array[1],1,1};
+    mxSetDimensions(new_mx_mat,(const int*)new_dims, 4);
+    mexPrintf("filling mxArray from 2d to 4d");  
+    ret_ptr=new_mx_mat;  
+  }else if (n_dims == 1 && fill_trailing_dimensions){
+    mxArray* new_mx_mat=mxDuplicateArray(mx_mat);  
+    mexPrintf("filling mxArray from 1d to 4d");
+    int new_dims[4] ={dims_array[0],1,1,1};
+    mxSetDimensions(new_mx_mat,new_dims, 4);
+    ret_ptr=new_mx_mat;  
+  }else{
+    ret_ptr=(mxArray*)mx_mat;
   }
   if (!mxIsSingle(mx_mat)) {
     std::cout << "check_contiguous_array\n";
@@ -360,27 +381,35 @@ static void check_contiguous_array(const mxArray* mx_mat, string name,
   if (dims_array[3] != width) {
     mxERROR((name + " has wrong width").c_str());
   }
+return ret_ptr;
 }
 
 
 
 static void net_set_input_arrays(MEX_ARGS) {
-  mxCHECK(nrhs == 3 && mxIsStruct(prhs[0]) && mxIsSingle(prhs[1]) && mxIsSingle(prhs[2]),
+  mexPrintf("mex_nargs:%d\n",nrhs);
+  mxCHECK(nrhs == 4 && mxIsStruct(prhs[0]) && mxIsSingle(prhs[1]) && mxIsSingle(prhs[2]),
       "Usage: caffe_('net_set_input_arrays', hNet, new_data_in, new_data_out)");
+
+  
+  int fill_trailing_dimensions=*((int*)mxGetData(prhs[4]));
+
+  int* layer_idx_ptr = (int*)mxGetData(prhs[3]);
+  int layer_idx = *layer_idx_ptr;
   // check that this network has an input MemoryDataLayer
   Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
   //MemoryDataLayer<float>* layer = MemoryDataLayer<float>(net->layers()[0]);
 
   shared_ptr<MemoryDataLayer<float> > md_layer =
-    boost::dynamic_pointer_cast< MemoryDataLayer<float> >(net->layers()[0]);
+    boost::dynamic_pointer_cast< MemoryDataLayer<float> >(net->layers()[layer_idx]);
   if (!md_layer) {
-    mxERROR("set_input_arrays may only be called if the first layer is a MemoryDataLayer");
+    mxERROR("set_input_arrays may only be called if the layer is a MemoryDataLayer");
   }
-
-  check_contiguous_array(prhs[1], "data array", md_layer->channels(),
-      md_layer->height(), md_layer->width());
-  check_contiguous_array(prhs[2], "labels array", 1, 1, 1);
-
+  mexPrintf("pre_array_check");
+  //mxArray* fixed_data = check_contiguous_array(prhs[1], "data array", md_layer->channels(),
+   //   md_layer->height(), md_layer->width(),fill_trailing_dimensions);
+  //mxArray* fixed_labels = check_contiguous_array(prhs[2], "labels array", 1, 1, 1,fill_trailing_dimensions);
+  mexPrintf("post_array_check");
   const int* data_dims_array = mxGetDimensions(prhs[1]);
   const int* label_dims_array = mxGetDimensions(prhs[2]);
 
