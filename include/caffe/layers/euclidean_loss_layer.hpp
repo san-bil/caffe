@@ -54,8 +54,10 @@ class EuclideanLossLayer : public LossLayer<Dtype> {
     return true;
   }
 
-  virtual const Dtype* Get_diff();
-  virtual void Set_diff(Dtype* data);
+  virtual void Get_diff(Blob<Dtype>* tmp_diff_blob);
+  virtual void Set_diff(Blob<Dtype>* diff_blob);
+  virtual int Get_diff_shape(int);
+
 
  protected:
   /// @copydoc EuclideanLossLayer

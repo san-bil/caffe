@@ -22,6 +22,8 @@
 
 #include "caffe/caffe.hpp"
 #include "caffe/layers/memory_data_layer.hpp"
+#include "caffe/layers/euclidean_loss_layer.hpp"
+
 
 #define MEX_ARGS int nlhs, mxArray **plhs, int nrhs, const mxArray **prhs
 
@@ -424,6 +426,31 @@ static void net_set_input_arrays(MEX_ARGS) {
   md_layer->Reset((float*)mxGetData(prhs[1]),(float*)mxGetData(prhs[2]),data_dims_array[0]);
 }
 
+static void net_get_jacobian(MEX_ARGS) {
+
+  mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]),
+      "Usage: caffe_('net_get_jacobian', hNet)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+
+  int* layer_idx_ptr = (int*)mxGetData(prhs[1]);
+  int layer_idx = *layer_idx_ptr;
+
+  shared_ptr<EuclideanLossLayer<float> > loss = boost::dynamic_pointer_cast< EuclideanLossLayer<float> >(net->layers()[layer_idx]); 
+  if (!loss) {
+    mxERROR("set_input_arrays may only be called if the layer is a LossLayer");
+  }
+
+  Blob<float> tmp_loss_diff(loss->Get_diff_shape(0), loss->Get_diff_shape(1), loss->Get_diff_shape(2), loss->Get_diff_shape(3));
+
+  loss->Get_diff(&tmp_loss_diff);
+
+  mxArray* diff_data = blob_to_mx_mat(&tmp_loss_diff,DIFF);
+//  const Dtype* top_diff = top[i]->cpu_diff();
+//  net->Backward();
+  plhs[0]=diff_data;
+
+}
+
 // Usage: caffe_('net_save', hNet, save_file)
 static void net_save(MEX_ARGS) {
   mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]) && mxIsChar(prhs[1]),
@@ -623,8 +650,9 @@ static handler_registry handlers[] = {
   { "get_net",            get_net         },
   { "net_get_attr",       net_get_attr    },
   { "net_forward",        net_forward     },
+  { "net_get_jacobian",   net_get_jacobian},
   { "net_backward",       net_backward    },
-  { "net_set_input_arrays",      net_set_input_arrays   },
+  { "net_set_input_arrays",net_set_input_arrays},
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
   { "net_save",           net_save        },

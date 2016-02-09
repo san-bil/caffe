@@ -46,13 +46,50 @@ void EuclideanLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 }
 
 template <typename Dtype>
- const Dtype* EuclideanLossLayer<Dtype>::Get_diff() {
-  return diff_.cpu_data();                   
+int EuclideanLossLayer<Dtype>::Get_diff_shape(int idx){
+  return (&diff_)->shape(idx);
 }
 
 template <typename Dtype>
-void EuclideanLossLayer<Dtype>::Set_diff(Dtype* data) {
-  diff_.set_cpu_data(data);                   
+void EuclideanLossLayer<Dtype>::Get_diff(Blob<Dtype>* tmp_diff_blob) {
+
+  Dtype* tmp_diff_mem_ptr = NULL;
+  Dtype* internal_diff_mem_ptr = NULL;
+
+  switch (Caffe::mode()) {
+  case Caffe::CPU:
+    tmp_diff_mem_ptr = tmp_diff_blob->mutable_cpu_diff();
+    internal_diff_mem_ptr = (&diff_)->mutable_cpu_diff();
+    break;
+  case Caffe::GPU:
+    tmp_diff_mem_ptr = tmp_diff_blob->mutable_gpu_diff();
+    internal_diff_mem_ptr = (&diff_)->mutable_gpu_diff();
+    break;
+  }
+  caffe_copy((&diff_)->count(), internal_diff_mem_ptr, tmp_diff_mem_ptr);
+}
+
+template <typename Dtype>
+void EuclideanLossLayer<Dtype>::Set_diff(Blob<Dtype>* diff_blob_ptr) {
+
+  Blob<Dtype>* internal_diff_blob_ptr=&diff_;
+
+  Dtype* diff_blob_mem_ptr = NULL;
+  Dtype* internal_diff_blob_mem_ptr_ = NULL;
+  
+  switch (Caffe::mode()) {
+  case Caffe::CPU:
+    diff_blob_mem_ptr = diff_blob_ptr->mutable_cpu_diff();
+    internal_diff_blob_mem_ptr_ = internal_diff_blob_ptr->mutable_cpu_diff();
+    break;
+  case Caffe::GPU:
+    diff_blob_mem_ptr = diff_blob_ptr->mutable_gpu_diff();
+    internal_diff_blob_mem_ptr_ = internal_diff_blob_ptr->mutable_gpu_diff();
+    break;
+  }
+
+  caffe_copy(internal_diff_blob_ptr->count(), diff_blob_mem_ptr, internal_diff_blob_mem_ptr_);
+
 }
 
 
