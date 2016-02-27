@@ -39,6 +39,7 @@ class MemoryDataLayer : public BaseDataLayer<Dtype> {
   void Reset(Dtype* data, Dtype* label, int n);
   void set_batch_size(int new_size);
 
+  const Dtype* get_data_ptr(){ return (const Dtype*)data_; }
   int batch_size() { return batch_size_; }
   int channels() { return channels_; }
   int height() { return height_; }
