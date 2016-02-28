@@ -440,7 +440,6 @@ static void net_set_input_arrays(MEX_ARGS) {
   caffe_copy(data_numel, (float*)(mxGetData(prhs[1])), input_data);
   caffe_copy(labels_numel, (float*)(mxGetData(prhs[2])), input_labels);
 
-static void net_get_jacobian(MEX_ARGS) {
 
 
   md_layer->Reset(input_data,input_labels,data_dims_array[0]);
@@ -478,6 +477,113 @@ static void net_get_input_arrays(MEX_ARGS) {
   caffe_copy(md_layer_count, md_layer_data, mat_mem_ptr);
   plhs[0] = mx_mat;
 }
+
+
+ static void net_get_jacobian(MEX_ARGS) {
+
+//   mxCHECK(nrhs == 3 && mxIsStruct(prhs[0]),"Usage: caffe_('net_get_jacobian', hNet, layer_index, blob_index)");
+//   Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+
+//   int* layer_idx_ptr = (int*)mxGetData(prhs[1]);
+//   int layer_idx = *layer_idx_ptr;
+//   mexPrintf("layer_idx:%d\n",layer_idx);
+
+//   shared_ptr<EuclideanLossLayer<float> > loss = boost::dynamic_pointer_cast< EuclideanLossLayer<float> >(net->layers()[layer_idx-1]); 
+//   if (!loss) {
+//     const vector< string >  net_layer_names = net->layer_names();
+//     mexPrintf("layer_name: %s\n",(net_layer_names[layer_idx]).c_str());
+//     mxERROR("net_get_jacobian may only be called if the layer is a EuclideanLossLayer");
+//   }else{
+//     mexPrintf("Found loss layer...\n");  
+//   }
+//   mexPrintf("Searching for output blob...\n");
+
+//   int blob_index = *((int*)mxGetData(prhs[2]));
+//   mexPrintf("blob_index:%d\n",blob_index);
+//   vector< shared_ptr< Blob<float> > > network_blobs = net->blobs();
+//   Blob<float>* input_blob = &(*network_blobs[blob_index]);
+
+//   mexPrintf("Found output blob...\n");
+
+
+//   int n_inputs = input_blob->count();
+
+//   Blob<float> tmp_loss_diff(loss->Get_diff_shape(0), loss->Get_diff_shape(1), loss->Get_diff_shape(2), loss->Get_diff_shape(3));
+//   Blob<float>* actual_diff= (Blob<float>*)loss->Get_internal_diff();
+//   (&tmp_loss_diff)->CopyFrom(*actual_diff);
+//   mexPrintf("Backed up the non-masked diff...\n");
+
+
+//   int n_outputs=(&tmp_loss_diff)->count();
+
+//   float* mask_array = (float *) malloc(n_outputs*sizeof(float));
+//   mexPrintf("Allocated memory for mask...\n");
+
+//   std::fill_n(mask_array,n_outputs,0);
+//   mexPrintf("filled mask array with zeros...\n");
+
+
+//   float* jacobian = (float *) malloc(n_outputs*n_inputs*sizeof(float));
+//   mexPrintf("allocated memory for jacobian...\n");
+
+
+//   for(int i = 0 ; i<n_outputs ; i++){
+    
+//     if(i==0){
+//       mask_array[i]=1;
+//     }else{
+//       mask_array[i]=1;
+//       mask_array[i-1]=0;
+//     }
+
+
+//     caffe_mul(n_outputs, (&tmp_loss_diff)->mutable_cpu_data(), mask_array, actual_diff->mutable_cpu_data());
+//     mexPrintf("Copied masked diff to loss layer diff memory...\n");
+//     net->Backward();
+//     mexPrintf("Backward finished...\n");
+
+//     float* start_address=jacobian+(i*n_inputs)*sizeof(float);
+//     caffe_copy(n_inputs, input_blob->mutable_cpu_diff(), start_address);
+//     mexPrintf("output %d PD vector - start_address: %d\n",i,start_address);
+//   }
+
+
+//   //mxArray* diff_data = blob_to_mx_mat(&tmp_loss_diff,DATA);
+//   //mxArray* real_diff_data = blob_to_mx_mat(actual_diff,DATA);
+// //  const Dtype* top_diff = top[i]->cpu_diff();
+// //  net->Backward();
+
+
+
+
+
+//  // plhs[0]=diff_data;
+//   //plhs[1]=real_diff_data;
+ }
+
+  static void net_get_loss_diff(MEX_ARGS) {
+
+   mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]),"Usage: caffe_('net_get_loss_diff', hNet, layer_index)");
+   Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+
+   int layer_idx = *((int*)mxGetData(prhs[1]));
+
+   shared_ptr<EuclideanLossLayer<float> > loss = boost::dynamic_pointer_cast< EuclideanLossLayer<float> >(net->layers()[layer_idx-1]); 
+   if (!loss) {
+     const vector< string >  net_layer_names = net->layer_names();
+     mexPrintf("layer_name: %s\n",(net_layer_names[layer_idx]).c_str());
+     mxERROR("net_get_jacobian may only be called if the layer is a EuclideanLossLayer");
+   }else{
+     mexPrintf("Found loss layer...\n");  
+   }
+
+
+   Blob<float> tmp_loss_diff(loss->Get_diff_shape(0), loss->Get_diff_shape(1), loss->Get_diff_shape(2), loss->Get_diff_shape(3));
+   Blob<float>* actual_diff= (Blob<float>*)loss->Get_internal_diff();
+   (&tmp_loss_diff)->CopyFrom(*actual_diff);
+   plhs[0] = blob_to_mx_mat(&tmp_loss_diff, DATA);
+ }
+
 
 // Usage: caffe_('net_save', hNet, save_file)
 static void net_save(MEX_ARGS) {
@@ -683,6 +789,7 @@ static handler_registry handlers[] = {
   { "net_backward",       net_backward    },
   { "net_get_input_arrays",net_get_input_arrays},
   { "net_set_input_arrays",net_set_input_arrays},
+  { "net_get_loss_diff",  net_get_loss_diff},
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
   { "net_save",           net_save        },

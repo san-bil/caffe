@@ -84,12 +84,25 @@ classdef Net < handle
     function set_input_arrays(self, data,labels, layer_idx)
       caffe_('net_set_input_arrays', self.hNet_self, data, labels, layer_idx);
     end
+    function array = get_input_arrays(self, layer_idx)
+      array = caffe_('net_get_input_arrays', self.hNet_self, layer_idx);
+    end
     function forward_prefilled(self)
       caffe_('net_forward', self.hNet_self);
+    end
+    function forward_from_to(self,from,to)
+      caffe_('net_forward', self.hNet_self,int32(from),int32(to));
     end
     function backward_prefilled(self)
       caffe_('net_backward', self.hNet_self);
     end
+    function [jacobian1,jacobian2]=get_jacobian(self,layer_idx,blob_obj)
+      [jacobian1,jacobian2] = caffe_('net_get_jacobian', self.hNet_self,int32(layer_idx),int32(blob_obj));
+    end
+    function loss_diff=get_loss_diff(self,layer_idx)
+      [loss_diff] = caffe_('net_get_loss_diff', self.hNet_self,int32(layer_idx));
+    end
+
     function res = forward(self, input_data)
       CHECK(iscell(input_data), 'input_data must be a cell array');
       CHECK(length(input_data) == length(self.inputs), ...
