@@ -55,6 +55,7 @@ class EuclideanLossLayer : public LossLayer<Dtype> {
   }
 
   virtual void Get_diff(Blob<Dtype>* tmp_diff_blob);
+  virtual Blob<Dtype>* Get_internal_diff();
   virtual void Set_diff(Blob<Dtype>* diff_blob);
   virtual int Get_diff_shape(int);
 
