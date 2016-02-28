@@ -398,15 +398,13 @@ return ret_ptr;
 
 
 static void net_set_input_arrays(MEX_ARGS) {
-  mexPrintf("mex_nargs:%d\n",nrhs);
   mxCHECK(nrhs == 4 && mxIsStruct(prhs[0]) && mxIsSingle(prhs[1]) && mxIsSingle(prhs[2]),
       "Usage: caffe_('net_set_input_arrays', hNet, new_data_in, new_data_out)");
 
   
-  int fill_trailing_dimensions=*((int*)mxGetData(prhs[4]));
+  //int fill_trailing_dimensions=*((int*)mxGetData(prhs[4]));
 
-  int* layer_idx_ptr = (int*)mxGetData(prhs[3]);
-  int layer_idx = *layer_idx_ptr;
+  int layer_idx = *((int*)mxGetData(prhs[3]));
   // check that this network has an input MemoryDataLayer
   Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
   //MemoryDataLayer<float>* layer = MemoryDataLayer<float>(net->layers()[0]);
@@ -416,11 +414,11 @@ static void net_set_input_arrays(MEX_ARGS) {
   if (!md_layer) {
     mxERROR("set_input_arrays may only be called if the layer is a MemoryDataLayer");
   }
-  mexPrintf("pre_array_check");
-  //mxArray* fixed_data = check_contiguous_array(prhs[1], "data array", md_layer->channels(),
-   //   md_layer->height(), md_layer->width(),fill_trailing_dimensions);
-  //mxArray* fixed_labels = check_contiguous_array(prhs[2], "labels array", 1, 1, 1,fill_trailing_dimensions);
-  mexPrintf("post_array_check");
+
+ // mxArray* fixed_data = check_contiguous_array(prhs[1], "data array", md_layer->channels(),
+  //    md_layer->height(), md_layer->width(),fill_trailing_dimensions);
+ // mxArray* fixed_labels = check_contiguous_array(prhs[2], "labels array", 1, 1, 1, 1);
+
   const int* data_dims_array = mxGetDimensions(prhs[1]);
   const int* label_dims_array = mxGetDimensions(prhs[2]);
 
@@ -431,33 +429,54 @@ static void net_set_input_arrays(MEX_ARGS) {
   if (data_dims_array[0] % md_layer->batch_size() != 0) {
     mxERROR("first dimensions of input arrays must be a multiple of batch size");
   }
+
+
+  const int data_numel=mxGetNumberOfElements(prhs[1]);
+  const int labels_numel=mxGetNumberOfElements(prhs[2]);
   
-  md_layer->Reset((float*)mxGetData(prhs[1]),(float*)mxGetData(prhs[2]),data_dims_array[0]);
-}
+  float* input_data = (float *) malloc(data_numel*sizeof(float));
+  float* input_labels = (float *) malloc(labels_numel*sizeof(float));
+
+  caffe_copy(data_numel, (float*)(mxGetData(prhs[1])), input_data);
+  caffe_copy(labels_numel, (float*)(mxGetData(prhs[2])), input_labels);
 
 static void net_get_jacobian(MEX_ARGS) {
 
+
+  md_layer->Reset(input_data,input_labels,data_dims_array[0]);
+  
+}
+
+static void net_get_input_arrays(MEX_ARGS) {
   mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]),
-      "Usage: caffe_('net_get_jacobian', hNet)");
+      "Usage: caffe_('net_get_input_arrays', hNet, memory_data_layer_idx)");
+
+  int layer_idx = *((int*)mxGetData(prhs[1]));
+
   Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
 
-  int* layer_idx_ptr = (int*)mxGetData(prhs[1]);
-  int layer_idx = *layer_idx_ptr;
-
-  shared_ptr<EuclideanLossLayer<float> > loss = boost::dynamic_pointer_cast< EuclideanLossLayer<float> >(net->layers()[layer_idx]); 
-  if (!loss) {
-    mxERROR("set_input_arrays may only be called if the layer is a LossLayer");
+  shared_ptr<MemoryDataLayer<float> > md_layer =
+    boost::dynamic_pointer_cast< MemoryDataLayer<float> >(net->layers()[layer_idx]);
+  if (!md_layer) {
+    mxERROR("get_input_arrays may only be called if the layer is a MemoryDataLayer");
   }
 
-  Blob<float> tmp_loss_diff(loss->Get_diff_shape(0), loss->Get_diff_shape(1), loss->Get_diff_shape(2), loss->Get_diff_shape(3));
+  int dims[4]; 
+  dims[0] = md_layer->batch_size();
+  dims[1] = md_layer->channels();
+  dims[2] = md_layer->height();
+  dims[3] = md_layer->width();
+  int md_layer_count = dims[0]*dims[1]*dims[2]*dims[3];
+  const float* md_layer_data = md_layer->get_data_ptr();
 
-  loss->Get_diff(&tmp_loss_diff);
+  mexPrintf("Got layer dims");
 
-  mxArray* diff_data = blob_to_mx_mat(&tmp_loss_diff,DIFF);
-//  const Dtype* top_diff = top[i]->cpu_diff();
-//  net->Backward();
-  plhs[0]=diff_data;
+  mxArray* mx_mat = mxCreateNumericArray(4, dims, mxSINGLE_CLASS, mxREAL);
+  
+  float* mat_mem_ptr = reinterpret_cast<float*>(mxGetData(mx_mat));
 
+  caffe_copy(md_layer_count, md_layer_data, mat_mem_ptr);
+  plhs[0] = mx_mat;
 }
 
 // Usage: caffe_('net_save', hNet, save_file)
@@ -659,8 +678,10 @@ static handler_registry handlers[] = {
   { "get_net",            get_net         },
   { "net_get_attr",       net_get_attr    },
   { "net_forward",        net_forward     },
+  { "net_forward_from_to",net_forward_from_to},
   { "net_get_jacobian",   net_get_jacobian},
   { "net_backward",       net_backward    },
+  { "net_get_input_arrays",net_get_input_arrays},
   { "net_set_input_arrays",net_set_input_arrays},
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
