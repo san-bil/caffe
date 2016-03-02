@@ -329,6 +329,55 @@ static void net_backward(MEX_ARGS) {
   net->Backward();
 }
 
+
+static void net_forward_batch(MEX_ARGS) {
+  mxCHECK(nrhs == 3 && mxIsStruct(prhs[0]),
+      "Usage: caffe_('net_forward_batch', hNet, hBlob, n_samps)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  Blob<float>* output_blob = handle_to_ptr<Blob<float> >(prhs[1]);
+  int n_samps = *((int*)mxGetData(prhs[2]));
+  int celldims[]={n_samps};
+
+  mxArray* forward_res = mxCreateCellArray(1, celldims);
+
+  mxArray* res_mat_ptr;
+  for(int i =0;i<n_samps;i++){
+    net->ForwardPrefilled();
+    res_mat_ptr = blob_to_mx_mat(output_blob, DATA);
+    mxSetCell(forward_res, i, res_mat_ptr);
+  }
+  plhs[0] = forward_res;
+}
+
+static void net_forward_backward_batch(MEX_ARGS) {
+  mxCHECK(nrhs == 4 && mxIsStruct(prhs[0]),
+      "Usage: caffe_('net_forward_backward_batch', hNet, hBlob, hBlob, n_samps)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  Blob<float>* input_blob = handle_to_ptr<Blob<float> >(prhs[1]);
+  Blob<float>* output_blob = handle_to_ptr<Blob<float> >(prhs[2]);
+
+  int n_samps = *((int*)mxGetData(prhs[3]));
+  int celldims[] = {n_samps};
+
+  mxArray* forward_res = mxCreateCellArray(1, celldims);
+  mxArray* backward_res = mxCreateCellArray(1, celldims);
+
+  mxArray* forward_res_mat_ptr;
+  mxArray* backward_res_mat_ptr;
+
+  for(int i =0;i<n_samps;i++){
+    net->ForwardPrefilled();
+    net->Backward();
+    forward_res_mat_ptr = blob_to_mx_mat(output_blob, DATA);
+    backward_res_mat_ptr = blob_to_mx_mat(input_blob, DIFF);
+    mxSetCell(forward_res, i, forward_res_mat_ptr);
+    mxSetCell(backward_res, i, backward_res_mat_ptr);
+  }
+  plhs[0] = forward_res;
+  plhs[1] = backward_res;
+}
+
+
 // Usage: caffe_('net_copy_from', hNet, weights_file)
 static void net_copy_from(MEX_ARGS) {
   mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]) && mxIsChar(prhs[1]),
@@ -787,6 +836,8 @@ static handler_registry handlers[] = {
   { "net_forward_from_to",net_forward_from_to},
   { "net_get_jacobian",   net_get_jacobian},
   { "net_backward",       net_backward    },
+  { "net_forward_batch",  net_forward_batch    },
+  { "net_forward_backward_batch", net_forward_backward_batch},
   { "net_get_input_arrays",net_get_input_arrays},
   { "net_set_input_arrays",net_set_input_arrays},
   { "net_get_loss_diff",  net_get_loss_diff},

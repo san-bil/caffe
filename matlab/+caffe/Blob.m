@@ -33,6 +33,9 @@ classdef Blob < handle
       diff = self.check_and_preprocess_data(diff);
       caffe_('blob_set_diff', self.hBlob_self, diff);
     end
+    function hBlob_self = get_handle(self)
+        hBlob_self = self.hBlob_self;
+    end
   end
   
   methods (Access = private)

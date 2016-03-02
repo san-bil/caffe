@@ -96,6 +96,12 @@ classdef Net < handle
     function backward_prefilled(self)
       caffe_('net_backward', self.hNet_self);
     end
+    function forward_res=forward_batch(self,output_hBlob,n_samps)
+      forward_res=caffe_('net_forward_batch', self.hNet_self, output_hBlob.get_handle(), int32(n_samps));
+    end
+    function [forward_res,backward_res]=forward_backward_batch(self,input_hBlob,output_hBlob,n_samps)
+      [forward_res,backward_res]=caffe_('net_forward_backward_batch', self.hNet_self, input_hBlob.get_handle(), output_hBlob.get_handle(), int32(n_samps));
+    end
     function [jacobian1,jacobian2]=get_jacobian(self,layer_idx,blob_obj)
       [jacobian1,jacobian2] = caffe_('net_get_jacobian', self.hNet_self,int32(layer_idx),int32(blob_obj));
     end
