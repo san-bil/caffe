@@ -472,12 +472,12 @@ static void net_set_input_arrays(MEX_ARGS) {
   const int* label_dims_array = mxGetDimensions(prhs[2]);
 
 
-  if (data_dims_array[0] != label_dims_array[0]) {
-    mxERROR("data and labels must have the same first dimension");
-  }
-  if (data_dims_array[0] % md_layer->batch_size() != 0) {
-    mxERROR("first dimensions of input arrays must be a multiple of batch size");
-  }
+  // if (data_dims_array[0] != label_dims_array[0]) {
+  //   mxERROR("data and labels must have the same first dimension");
+  // }
+  // if (data_dims_array[0] % md_layer->batch_size() != 0) {
+  //   mxERROR("first dimensions of input arrays must be a multiple of batch size");
+  // }
 
 
   const int data_numel=mxGetNumberOfElements(prhs[1]);
