@@ -397,52 +397,52 @@ static void net_reshape(MEX_ARGS) {
   net->Reshape();
 }
 
-static mxArray* check_contiguous_array(const mxArray* mx_mat, string name,
-    int channels, int height, int width, int fill_trailing_dimensions) {
+// static mxArray* check_contiguous_array(const mxArray* mx_mat, string name,
+//     int channels, int height, int width, int fill_trailing_dimensions) {
 
-  int n_dims=mxGetNumberOfDimensions(mx_mat);
-  mxArray* ret_ptr=NULL;
-  const int* dims_array = mxGetDimensions(mx_mat);
-  mexPrintf("%d %d %d %d\n",dims_array[0],dims_array[1],dims_array[2],dims_array[3]);
-  mexPrintf("%d %d %d\n",channels,height,width);
-  if (n_dims != 4 && !fill_trailing_dimensions) {
-    mxERROR((name + " must be 4-d").c_str());
-  }else if (n_dims == 3 && fill_trailing_dimensions){
-    mxArray* new_mx_mat=mxDuplicateArray(mx_mat);
-    int new_dims[4] ={dims_array[0],dims_array[1],dims_array[2],1};
-    mxSetDimensions(new_mx_mat,(const int*)new_dims, 4);
-    mexPrintf("filling mxArray from 3d to 4d");  
-    ret_ptr=new_mx_mat;
-  }else if (n_dims == 2 && fill_trailing_dimensions){
-    mxArray* new_mx_mat=mxDuplicateArray(mx_mat);
-    int new_dims[4] ={dims_array[0],dims_array[1],1,1};
-    mxSetDimensions(new_mx_mat,(const int*)new_dims, 4);
-    mexPrintf("filling mxArray from 2d to 4d");  
-    ret_ptr=new_mx_mat;  
-  }else if (n_dims == 1 && fill_trailing_dimensions){
-    mxArray* new_mx_mat=mxDuplicateArray(mx_mat);  
-    mexPrintf("filling mxArray from 1d to 4d");
-    int new_dims[4] ={dims_array[0],1,1,1};
-    mxSetDimensions(new_mx_mat,new_dims, 4);
-    ret_ptr=new_mx_mat;  
-  }else{
-    ret_ptr=(mxArray*)mx_mat;
-  }
-  if (!mxIsSingle(mx_mat)) {
-    std::cout << "check_contiguous_array\n";
-    mxERROR((name + " must be float32 (check_contiguous_array)").c_str());
-  }
-  if (dims_array[1] != channels) {
-    mxERROR((name + " has wrong number of channels").c_str());
-  }
-  if (dims_array[2] != height) {
-    mxERROR((name + " has wrong height").c_str());
-  }
-  if (dims_array[3] != width) {
-    mxERROR((name + " has wrong width").c_str());
-  }
-return ret_ptr;
-}
+//   int n_dims=mxGetNumberOfDimensions(mx_mat);
+//   mxArray* ret_ptr=NULL;
+//   const int* dims_array = mxGetDimensions(mx_mat);
+//   mexPrintf("%d %d %d %d\n",dims_array[0],dims_array[1],dims_array[2],dims_array[3]);
+//   mexPrintf("%d %d %d\n",channels,height,width);
+//   if (n_dims != 4 && !fill_trailing_dimensions) {
+//     mxERROR((name + " must be 4-d").c_str());
+//   }else if (n_dims == 3 && fill_trailing_dimensions){
+//     mxArray* new_mx_mat=mxDuplicateArray(mx_mat);
+//     int new_dims[4] ={dims_array[0],dims_array[1],dims_array[2],1};
+//     mxSetDimensions(new_mx_mat,(const int*)new_dims, 4);
+//     mexPrintf("filling mxArray from 3d to 4d");  
+//     ret_ptr=new_mx_mat;
+//   }else if (n_dims == 2 && fill_trailing_dimensions){
+//     mxArray* new_mx_mat=mxDuplicateArray(mx_mat);
+//     int new_dims[4] ={dims_array[0],dims_array[1],1,1};
+//     mxSetDimensions(new_mx_mat,(const int*)new_dims, 4);
+//     mexPrintf("filling mxArray from 2d to 4d");  
+//     ret_ptr=new_mx_mat;  
+//   }else if (n_dims == 1 && fill_trailing_dimensions){
+//     mxArray* new_mx_mat=mxDuplicateArray(mx_mat);  
+//     mexPrintf("filling mxArray from 1d to 4d");
+//     int new_dims[4] ={dims_array[0],1,1,1};
+//     mxSetDimensions(new_mx_mat,new_dims, 4);
+//     ret_ptr=new_mx_mat;  
+//   }else{
+//     ret_ptr=(mxArray*)mx_mat;
+//   }
+//   if (!mxIsSingle(mx_mat)) {
+//     std::cout << "check_contiguous_array\n";
+//     mxERROR((name + " must be float32 (check_contiguous_array)").c_str());
+//   }
+//   if (dims_array[1] != channels) {
+//     mxERROR((name + " has wrong number of channels").c_str());
+//   }
+//   if (dims_array[2] != height) {
+//     mxERROR((name + " has wrong height").c_str());
+//   }
+//   if (dims_array[3] != width) {
+//     mxERROR((name + " has wrong width").c_str());
+//   }
+// return ret_ptr;
+// }
 
 
 
@@ -469,7 +469,7 @@ static void net_set_input_arrays(MEX_ARGS) {
  // mxArray* fixed_labels = check_contiguous_array(prhs[2], "labels array", 1, 1, 1, 1);
 
   const int* data_dims_array = mxGetDimensions(prhs[1]);
-  const int* label_dims_array = mxGetDimensions(prhs[2]);
+  // const int* label_dims_array = mxGetDimensions(prhs[2]);
 
 
   // if (data_dims_array[0] != label_dims_array[0]) {
@@ -489,9 +489,30 @@ static void net_set_input_arrays(MEX_ARGS) {
   caffe_copy(data_numel, (float*)(mxGetData(prhs[1])), input_data);
   caffe_copy(labels_numel, (float*)(mxGetData(prhs[2])), input_labels);
 
-
+  const float* old_data_ptr=md_layer->get_data_ptr();
 
   md_layer->Reset(input_data,input_labels,data_dims_array[0]);
+  free((float*)old_data_ptr);
+}
+
+
+
+
+static void print_array(MEX_ARGS) {
+
+  const int data_numel=mxGetNumberOfElements(prhs[0]);
+  mexPrintf("numel:%d\n",data_numel);
+
+  double* mat_mem_ptr = (double*)(mxGetData(prhs[0]));
+  double* addr;
+  double arr_val;
+  for(int i = 0;i<data_numel;i++){  
+
+    addr = mat_mem_ptr+i;//(i*sizeof(double));
+    arr_val = *addr;
+
+    std::cerr << "arrval: " << arr_val << "\n";
+  }
   
 }
 
@@ -840,6 +861,7 @@ static handler_registry handlers[] = {
   { "net_forward_backward_batch", net_forward_backward_batch},
   { "net_get_input_arrays",net_get_input_arrays},
   { "net_set_input_arrays",net_set_input_arrays},
+  { "print_array",        print_array},
   { "net_get_loss_diff",  net_get_loss_diff},
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
