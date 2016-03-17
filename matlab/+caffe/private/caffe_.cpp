@@ -124,6 +124,26 @@ static mxArray* int_vec_to_mx_vec(const vector<int>& int_vec) {
   return mx_vec;
 }
 
+// Convert vector<float> to matlab row vector
+static mxArray* float_vec_to_mx_vec(const vector<float>& float_vec) {
+  mxArray* mx_vec = mxCreateDoubleMatrix(float_vec.size(), 1, mxREAL);
+  double* vec_mem_ptr = mxGetPr(mx_vec);
+  for (int i = 0; i < float_vec.size(); i++) {
+    vec_mem_ptr[i] = static_cast<double>(float_vec[i]);
+  }
+  return mx_vec;
+}
+
+// Convert matlab row vector to vector<float>
+static vector<float> mx_vec_to_float_vec(mxArray* mx_vec) {
+  vector<float> float_vec;
+  double* vec_mem_ptr = mxGetPr(mx_vec);
+  for (int i = 0; i < mxGetNumberOfElements(mx_vec); i++) {
+    float_vec.push_back(vec_mem_ptr[i]);    
+  }
+  return float_vec;
+}
+
 // Convert vector<string> to matlab cell vector of strings
 static mxArray* str_vec_to_mx_strcell(const vector<std::string>& str_vec) {
   mxArray* mx_strcell = mxCreateCellMatrix(str_vec.size(), 1);
@@ -320,6 +340,9 @@ static void net_forward_from_to(MEX_ARGS) {
   int to = *((int*)mxGetData(prhs[2]));
   net->ForwardFromTo(from,to);
 }
+
+
+
 
 // Usage: caffe_('net_backward', hNet)
 static void net_backward(MEX_ARGS) {
@@ -655,6 +678,25 @@ static void net_get_input_arrays(MEX_ARGS) {
  }
 
 
+static void net_get_lr_mults(MEX_ARGS) {
+  mxCHECK(nrhs == 1 && mxIsStruct(prhs[0]),
+      "Usage: caffe_('net_get_lr_mults', hNet)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  const vector<float> paramslr = net->params_lr();
+  mxArray* lr_mults_mxarray = float_vec_to_mx_vec(paramslr);
+  plhs[0] = lr_mults_mxarray;
+}
+
+static void net_set_lr_mults(MEX_ARGS) {
+  mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]),
+      "Usage: caffe_('net_set_lr_mults', hNet, lr_mults)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  const mxArray* params_lr_mxarray = prhs[1];
+  vector<float> paramslr = mx_vec_to_float_vec((mxArray*)params_lr_mxarray);
+  net->set_params_lr(paramslr);  
+}
+
+
 // Usage: caffe_('net_save', hNet, save_file)
 static void net_save(MEX_ARGS) {
   mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]) && mxIsChar(prhs[1]),
@@ -835,6 +877,14 @@ static void version(MEX_ARGS) {
   plhs[0] = mxCreateString(AS_STRING(CAFFE_VERSION));
 }
 
+
+// Usage: caffe_('version')
+static void compile_stale_test(MEX_ARGS) {
+  mxCHECK(nrhs == 0, "Usage: caffe_('compile_stale_test')");
+  // Return version string
+  mexPrintf("Is this compile stale?");
+}
+
 /** -----------------------------------------------------------------
  ** Available commands.
  **/
@@ -863,6 +913,8 @@ static handler_registry handlers[] = {
   { "net_set_input_arrays",net_set_input_arrays},
   { "print_array",        print_array},
   { "net_get_loss_diff",  net_get_loss_diff},
+  { "net_get_lr_mults",   net_get_lr_mults},
+  { "net_set_lr_mults",   net_set_lr_mults},
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
   { "net_save",           net_save        },
@@ -882,6 +934,8 @@ static handler_registry handlers[] = {
   { "read_mean",          read_mean       },
   { "write_mean",         write_mean      },
   { "version",            version         },
+  { "compile_stale_test", compile_stale_test},
+
   // The end.
   { "END",                NULL            },
 };

@@ -180,6 +180,8 @@ class Net {
   /// @brief returns the learnable parameter learning rate multipliers
   inline const vector<float>& params_lr() const { return params_lr_; }
   inline const vector<bool>& has_params_lr() const { return has_params_lr_; }
+  inline void set_params_lr(vector<float> new_params_lr) { params_lr_ = new_params_lr ; }
+
   /// @brief returns the learnable parameter decay multipliers
   inline const vector<float>& params_weight_decay() const {
     return params_weight_decay_;

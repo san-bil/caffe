@@ -108,7 +108,12 @@ classdef Net < handle
     function loss_diff=get_loss_diff(self,layer_idx)
       [loss_diff] = caffe_('net_get_loss_diff', self.hNet_self,int32(layer_idx));
     end
-
+    function lr_mults=net_get_lr_mults(self)
+      [lr_mults] = caffe_('net_get_lr_mults', self.hNet_self);
+    end
+    function net_set_lr_mults(self,lr_mults)
+      caffe_('net_set_lr_mults', self.hNet_self, lr_mults);
+    end
     function res = forward(self, input_data)
       CHECK(iscell(input_data), 'input_data must be a cell array');
       CHECK(length(input_data) == length(self.inputs), ...
